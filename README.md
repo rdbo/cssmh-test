@@ -5,6 +5,6 @@ Counter-Strike Source Multihack by rdbo
 Read `LICENSE`
 
 ## Requirements
-- GCC/CLang
+- GCC
 - libdl
 - libSDL2
