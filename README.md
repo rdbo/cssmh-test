@@ -8,3 +8,6 @@ Read `LICENSE`
 - GCC
 - libdl
 - libSDL2
+
+## Credits
+- [AlliedModders' HL2SDK](https://github.com/alliedmodders/hl2sdk)
