@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <dlfcn.h>
 #include <link.h>
+#include <sys/mman.h>
 
 IClientEntityList *CSSMH::Data::EntityList;
 CBasePlayer *CSSMH::Data::LocalPlayer;
@@ -17,6 +18,24 @@ IClientMode *CSSMH::Data::ClientMode;
 static void *GetModuleBase(const char *modname);
 static void *GetModuleHandle(void *addr);
 static void *GetSymbol(void *handle, const char *symbol);
+
+typedef bool (*CreateMoveFn)(IClientMode *thisptr, float flInputSampleTime, CUserCmd *cmd);
+
+static CreateMoveFn oCreateMove;
+
+bool hkCreateMove(IClientMode *thisptr, float flInputSampleTime, CUserCmd *cmd)
+{
+	CBasePlayer *LocalPlayer = (CBasePlayer *)CSSMH::Data::EntityList->GetClientEntity(CSSMH::Data::EngineClient->GetLocalPlayer());
+
+	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] FwdMove: %d\n", cmd->forwardmove);
+
+	if ((cmd->buttons & IN_JUMP) && !(LocalPlayer->GetFlags() & (FL_ONGROUND))) {
+		cmd->buttons &= ~IN_JUMP;
+		CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] Jump\n");
+	}
+
+	return oCreateMove(thisptr, flInputSampleTime, cmd);
+}
 
 void CSSMH::Init()
 {
@@ -53,7 +72,7 @@ void CSSMH::Init()
 	);
 
 	log_file << "[*] Client Mode: " << (void *)CSSMH::Data::ClientMode << std::endl;
-	
+
 	std::wstring mapname = std::wstring(CSSMH::Data::ClientMode->GetMapName());
 	log_file << "[*] Map Name: " << std::string(mapname.begin(), mapname.end()) << std::endl;
 
@@ -87,7 +106,14 @@ void CSSMH::Init()
 	// ---
 
 	Color col = Color(255, 0, 0, 255);
-	CSSMH::Data::EngineCvar->ConsoleColorPrintf(col, "[CSSMH] Loaded");
+	CSSMH::Data::EngineCvar->ConsoleColorPrintf(col, "[CSSMH] Loaded\n");
+
+	// CreateMove test hook
+	void **ClientModeVMT = *(void ***)CSSMH::Data::ClientMode;
+	log_file << "[*] Client Mode VMT: " << ClientModeVMT << std::endl;
+	mprotect((void *)((uintptr_t)ClientModeVMT & -sysconf(_SC_PAGE_SIZE)), (size_t)sysconf(_SC_PAGE_SIZE), PROT_EXEC | PROT_READ | PROT_WRITE); // bad but works
+	oCreateMove = (CreateMoveFn)ClientModeVMT[21];
+	ClientModeVMT[21] = (void *)hkCreateMove;
 
 	log_file.close();
 }

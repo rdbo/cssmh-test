@@ -15,6 +15,7 @@ if [ ! -f $LIB_PATH ]; then
 fi
 
 gdb -n -q \
+	-ex "break CSSMH::Init" \
 	-ex "attach $(pidof -s $GAME_NAME)" \
 	-ex "set \$dlopen = (void *(*)(char *, int))dlopen" \
 	-ex "call \$dlopen(\"$LIB_PATH\", $LOAD_MODE)" \

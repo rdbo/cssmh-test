@@ -53,5 +53,6 @@
 #include "public/cdll_int.h"
 #include "game/client/cdll_client_int.h"
 #include "game/client/iclientmode.h"
+#include "game/shared/in_buttons.h"
 
 #endif

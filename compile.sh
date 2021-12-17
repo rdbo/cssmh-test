@@ -11,4 +11,4 @@ fi
 
 mkdir $BUILD_DIR
 
-gcc -std=gnu++11 -o $BUILD_DIR/$CSSMH_OUT -g -fpermissive -shared -fPIC -m32 $CSSMH_SRC $HL2SDK_INC -ldl -lSDL2 -lstdc++ -pthread -static-libstdc++ -Wl,--no-undefined,--no-allow-shlib-undefined `sdl2-config --cflags`
+gcc -std=gnu++11 -o $BUILD_DIR/$CSSMH_OUT -g -ggdb -fpermissive -shared -fPIC -m32 $CSSMH_SRC $HL2SDK_INC -ldl -lSDL2 -lstdc++ -pthread -static-libstdc++ -Wl,--no-undefined,--no-allow-shlib-undefined,-g `sdl2-config --cflags`
