@@ -118,7 +118,8 @@ public:
 		}
 	}
 
-	FORCEINLINE void KillRef(void)
+	FORCEINLINE void KillRef(void);
+	/*
 	{
 		if ( m_pObject )
 		{
@@ -126,6 +127,7 @@ public:
 			m_pObject = NULL;
 		}
 	}
+	*/
 
 };
 
