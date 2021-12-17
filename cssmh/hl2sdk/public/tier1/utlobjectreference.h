@@ -118,7 +118,7 @@ public:
 		}
 	}
 
-	FORCEINLINE void KillRef(void);
+	FORCEINLINE void KillRef(void) UNDEF_CALL
 	/*
 	{
 		if ( m_pObject )
