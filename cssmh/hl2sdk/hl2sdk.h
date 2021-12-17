@@ -51,5 +51,7 @@
 #include "game/client/c_baseplayer.h"
 #include "public/appframework/ilaunchermgr.h"
 #include "public/cdll_int.h"
+#include "game/client/cdll_client_int.h"
+#include "game/client/iclientmode.h"
 
 #endif

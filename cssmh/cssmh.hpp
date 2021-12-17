@@ -13,6 +13,8 @@ namespace CSSMH {
 		extern CBasePlayer *LocalPlayer;
 		extern IVEngineClient *EngineClient;
 		extern ICvar *EngineCvar;
+		extern IBaseClientDLL *BaseClientDLL;
+		extern IClientMode *ClientMode;
 	}
 
 	namespace Hacks {

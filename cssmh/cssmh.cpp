@@ -11,6 +11,8 @@ CBasePlayer *CSSMH::Data::LocalPlayer;
 ILauncherMgr *CSSMH::Data::LauncherMgr;
 IVEngineClient *CSSMH::Data::EngineClient;
 ICvar *CSSMH::Data::EngineCvar;
+IBaseClientDLL *CSSMH::Data::BaseClientDLL;
+IClientMode *CSSMH::Data::ClientMode;
 
 static void *GetModuleBase(const char *modname);
 static void *GetModuleHandle(void *addr);
@@ -34,6 +36,26 @@ void CSSMH::Init()
 
 	CSSMH::Data::EntityList = (IClientEntityList *)fnCreateInterface(VCLIENTENTITYLIST_INTERFACE_VERSION, NULL);
 	log_file << "[*] Entity List: " << (void *)CSSMH::Data::EntityList << std::endl;
+
+	CSSMH::Data::BaseClientDLL = (IBaseClientDLL *)fnCreateInterface(CLIENT_DLL_INTERFACE_VERSION, NULL);
+	log_file << "[*] Base Client DLL: " << (void *)CSSMH::Data::BaseClientDLL << std::endl;
+	log_file << "[*] Screen Width: " << CSSMH::Data::BaseClientDLL->GetScreenWidth() << std::endl;
+	log_file << "[*] Screen Height: " << CSSMH::Data::BaseClientDLL->GetScreenHeight() << std::endl;
+
+	/* Get g_pClientMode from CHLClient::HudProcessInput
+	 * HudProcessInput:
+	 *   mov 0xed94ff04, %eax ; pointer to g_pClientMode
+	 *   ...
+	 * Offset: 1
+	 */
+	CSSMH::Data::ClientMode = **(IClientMode ***)(
+		&((char *)((*(void ***)CSSMH::Data::BaseClientDLL)[10]))[1]
+	);
+
+	log_file << "[*] Client Mode: " << (void *)CSSMH::Data::ClientMode << std::endl;
+	
+	std::wstring mapname = std::wstring(CSSMH::Data::ClientMode->GetMapName());
+	log_file << "[*] Map Name: " << std::string(mapname.begin(), mapname.end()) << std::endl;
 
 	// engine.so
 	void *EngineBase = GetModuleBase("bin/engine.so");
