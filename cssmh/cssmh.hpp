@@ -8,8 +8,11 @@ namespace CSSMH {
 	void Shutdown();
 
 	namespace Data {
+		extern ILauncherMgr *LauncherMgr;
 		extern IClientEntityList *EntityList;
 		extern CBasePlayer *LocalPlayer;
+		extern IVEngineClient *EngineClient;
+		extern ICvar *EngineCvar;
 	}
 
 	namespace Hacks {
