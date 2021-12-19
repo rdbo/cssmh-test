@@ -1,5 +1,5 @@
-#ifndef HL2SDK_H
-#define HL2SDK_H
+#ifndef HL2SDK_HPP
+#define HL2SDK_HPP
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -33,9 +33,13 @@
 #define DX_TO_GL_ABSTRACTION
 #endif
 
-#define UNDEF_CALL { throw std::runtime_error("Undefined function called"); }
+#define UNDEF_CALL { std::cout << "[!] Undefined function call" << std::endl; exit(-1); }
 
-#include <stdexcept>
+#define CRC32_INIT_VALUE 0xFFFFFFFFUL
+#define CRC32_XOR_VALUE  0xFFFFFFFFUL
+#define NUM_BYTES 256
+
+#include <iostream>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 #include "public/tier0/platform.h"
@@ -52,7 +56,9 @@
 #include "public/appframework/ilaunchermgr.h"
 #include "public/cdll_int.h"
 #include "game/client/cdll_client_int.h"
+#include "game/client/input.h"
 #include "game/client/iclientmode.h"
+#include "game/client/clientmode_shared.h"
 #include "game/shared/in_buttons.h"
 
 #endif

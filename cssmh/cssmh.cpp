@@ -14,94 +14,120 @@ IVEngineClient *CSSMH::Data::EngineClient;
 ICvar *CSSMH::Data::EngineCvar;
 IBaseClientDLL *CSSMH::Data::BaseClientDLL;
 IClientMode *CSSMH::Data::ClientMode;
+CInput *CSSMH::Data::Input;
 
 static void *GetModuleBase(const char *modname);
 static void *GetModuleHandle(void *addr);
 static void *GetSymbol(void *handle, const char *symbol);
 
-typedef bool (*CreateMoveFn)(IClientMode *thisptr, float flInputSampleTime, CUserCmd *cmd);
+typedef void (*CreateMoveFn)(IBaseClientDLL *thisptr, int sequence_number, float input_sample_frametime, bool active);
 
 static CreateMoveFn oCreateMove;
 
-bool hkCreateMove(IClientMode *thisptr, float flInputSampleTime, CUserCmd *cmd)
+void hkCreateMove(IBaseClientDLL *thisptr, int sequence_number, float input_sample_frametime, bool active)
 {
+	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] CreateMove Start\n");
+	oCreateMove(thisptr, sequence_number, input_sample_frametime, active);
+
+	std::wstring mapname = std::wstring(CSSMH::Data::ClientMode->GetMapName());
+	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] Map Name: %s\n", std::string(mapname.begin(), mapname.end()).c_str());
+	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] Input Sample Frametime: %f\n", input_sample_frametime);
+	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] Sequence Number: %d\n", sequence_number);
+
 	CBasePlayer *LocalPlayer = (CBasePlayer *)CSSMH::Data::EntityList->GetClientEntity(CSSMH::Data::EngineClient->GetLocalPlayer());
-
-	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] FwdMove: %d\n", cmd->forwardmove);
-
-	if ((cmd->buttons & IN_JUMP) && !(LocalPlayer->GetFlags() & (FL_ONGROUND))) {
+	if (!LocalPlayer)
+		return;
+	
+	CUserCmd *cmd = CSSMH::Data::Input->GetUserCmd(sequence_number);
+	if (!cmd)
+		return;
+	
+	if ((cmd->buttons & IN_JUMP) && !(LocalPlayer->GetFlags() & FL_ONGROUND))
 		cmd->buttons &= ~IN_JUMP;
-		CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] Jump\n");
-	}
+	
+	// Verify usercmd
+	CInput::CVerifiedUserCmd *verified_cmd = (CInput::CVerifiedUserCmd *)&CSSMH::Data::Input->m_pVerifiedCommands[sequence_number % MULTIPLAYER_BACKUP];
+	verified_cmd->m_cmd = *cmd;
+	verified_cmd->m_crc = cmd->GetChecksum();
 
-	return oCreateMove(thisptr, flInputSampleTime, cmd);
+	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] CreateMove End\n");
+	return;
 }
 
 void CSSMH::Init()
 {
 	std::system("zenity --info --title=\"[CSSMH]\" --text=\"Injected\"");
-	std::ofstream log_file = std::ofstream("/tmp/cssmh.txt");
+	freopen("/tmp/cssmh.txt", "w", stdout);
 	CreateInterfaceFn fnCreateInterface;
 
 	// client.so
 	void *ClientBase = GetModuleBase("cstrike/bin/client.so");
-	log_file << "[*] Client Base: " << ClientBase << std::endl;
+	std::cout << "[*] Client Base: " << ClientBase << std::endl;
 
 	void *ClientHandle = GetModuleHandle(ClientBase);
-	log_file << "[*] Client Handle: " << ClientHandle << std::endl;
+	std::cout << "[*] Client Handle: " << ClientHandle << std::endl;
 
 	fnCreateInterface = (CreateInterfaceFn)GetSymbol(ClientHandle, CREATEINTERFACE_PROCNAME);
-	log_file << "[*] Client CreateInterface: " << (void *)fnCreateInterface << std::endl;
+	std::cout << "[*] Client CreateInterface: " << (void *)fnCreateInterface << std::endl;
 
 	CSSMH::Data::EntityList = (IClientEntityList *)fnCreateInterface(VCLIENTENTITYLIST_INTERFACE_VERSION, NULL);
-	log_file << "[*] Entity List: " << (void *)CSSMH::Data::EntityList << std::endl;
+	std::cout << "[*] Entity List: " << (void *)CSSMH::Data::EntityList << std::endl;
 
 	CSSMH::Data::BaseClientDLL = (IBaseClientDLL *)fnCreateInterface(CLIENT_DLL_INTERFACE_VERSION, NULL);
-	log_file << "[*] Base Client DLL: " << (void *)CSSMH::Data::BaseClientDLL << std::endl;
-	log_file << "[*] Screen Width: " << CSSMH::Data::BaseClientDLL->GetScreenWidth() << std::endl;
-	log_file << "[*] Screen Height: " << CSSMH::Data::BaseClientDLL->GetScreenHeight() << std::endl;
+	std::cout << "[*] Base Client DLL: " << (void *)CSSMH::Data::BaseClientDLL << std::endl;
+	std::cout << "[*] Screen Width: " << CSSMH::Data::BaseClientDLL->GetScreenWidth() << std::endl;
+	std::cout << "[*] Screen Height: " << CSSMH::Data::BaseClientDLL->GetScreenHeight() << std::endl;
 
-	/* Get g_pClientMode from CHLClient::HudProcessInput
+	/* Get 'g_pClientMode' from CHLClient::HudProcessInput
 	 * HudProcessInput:
-	 *   mov 0xed94ff04, %eax ; pointer to g_pClientMode
+	 *   mov 0xed94ff04, %eax ; pointer to 'g_pClientMode'
 	 *   ...
 	 * Offset: 1
 	 */
+
 	CSSMH::Data::ClientMode = **(IClientMode ***)(
 		&((char *)((*(void ***)CSSMH::Data::BaseClientDLL)[10]))[1]
 	);
+	std::cout << "[*] Client Mode: " << (void *)CSSMH::Data::ClientMode << std::endl;
 
-	log_file << "[*] Client Mode: " << (void *)CSSMH::Data::ClientMode << std::endl;
+	/* Get 'input' from CHLClient::IN_ActivateMouse
+	 * IN_ActivateMouse:
+	 *   mov 0xed9455fc,%eax ; pointer to 'input'
+	 *   ...
+	 * Offset: 1
+	 */
 
-	std::wstring mapname = std::wstring(CSSMH::Data::ClientMode->GetMapName());
-	log_file << "[*] Map Name: " << std::string(mapname.begin(), mapname.end()) << std::endl;
+	CSSMH::Data::Input = **(CInput ***)(
+		&((char *)((*(void ***)CSSMH::Data::BaseClientDLL)[14]))[1]
+	);
+	std::cout << "[*] Input: " << (void *)CSSMH::Data::Input << std::endl;
 
 	// engine.so
 	void *EngineBase = GetModuleBase("bin/engine.so");
-	log_file << "[*] Engine Base: " << EngineBase << std::endl;
+	std::cout << "[*] Engine Base: " << EngineBase << std::endl;
 
 	void *EngineHandle = GetModuleHandle(EngineBase);
-	log_file << "[*] Engine Handle: " << EngineHandle << std::endl;
+	std::cout << "[*] Engine Handle: " << EngineHandle << std::endl;
 
 	fnCreateInterface = (CreateInterfaceFn)GetSymbol(EngineHandle, CREATEINTERFACE_PROCNAME);
-	log_file << "[*] Engine CreateInterface: " << (void *)fnCreateInterface << std::endl;
+	std::cout << "[*] Engine CreateInterface: " << (void *)fnCreateInterface << std::endl;
 
 	CSSMH::Data::EngineClient = (IVEngineClient *)fnCreateInterface(VENGINE_CLIENT_INTERFACE_VERSION, NULL);
-	log_file << "[*] Engine Client: " << (void *)CSSMH::Data::EngineClient << std::endl;
+	std::cout << "[*] Engine Client: " << (void *)CSSMH::Data::EngineClient << std::endl;
 
 	// materialsystem.so
 
 	void *MatSysBase = GetModuleBase("bin/materialsystem.so");
-	log_file << "[*] MatSys Base: " << MatSysBase << std::endl;
+	std::cout << "[*] MatSys Base: " << MatSysBase << std::endl;
 
 	void *MatSysHandle = GetModuleHandle(MatSysBase);
-	log_file << "[*] MatSys Handle: " << MatSysHandle << std::endl;
+	std::cout << "[*] MatSys Handle: " << MatSysHandle << std::endl;
 
 	fnCreateInterface = (CreateInterfaceFn)GetSymbol(MatSysHandle, CREATEINTERFACE_PROCNAME);
-	log_file << "[*] MatSys CreateInterface: " << (void *)fnCreateInterface << std::endl;
+	std::cout << "[*] MatSys CreateInterface: " << (void *)fnCreateInterface << std::endl;
 
 	CSSMH::Data::EngineCvar = (ICvar *)fnCreateInterface(CVAR_INTERFACE_VERSION, NULL);
-	log_file << "[*] Engine Cvar: " << (void *)CSSMH::Data::EngineCvar << std::endl;
+	std::cout << "[*] Engine Cvar: " << (void *)CSSMH::Data::EngineCvar << std::endl;
 
 	// ---
 
@@ -109,13 +135,12 @@ void CSSMH::Init()
 	CSSMH::Data::EngineCvar->ConsoleColorPrintf(col, "[CSSMH] Loaded\n");
 
 	// CreateMove test hook
-	void **ClientModeVMT = *(void ***)CSSMH::Data::ClientMode;
-	log_file << "[*] Client Mode VMT: " << ClientModeVMT << std::endl;
-	mprotect((void *)((uintptr_t)ClientModeVMT & -sysconf(_SC_PAGE_SIZE)), (size_t)sysconf(_SC_PAGE_SIZE), PROT_EXEC | PROT_READ | PROT_WRITE); // bad but works
-	oCreateMove = (CreateMoveFn)ClientModeVMT[21];
-	ClientModeVMT[21] = (void *)hkCreateMove;
-
-	log_file.close();
+	void **BaseClientDLL_VMT = *(void ***)CSSMH::Data::BaseClientDLL;
+	std::cout << "[*] BaseClientDLL VMT: " << BaseClientDLL_VMT << std::endl;
+	mprotect((void *)((uintptr_t)BaseClientDLL_VMT & -sysconf(_SC_PAGE_SIZE)), (size_t)sysconf(_SC_PAGE_SIZE), PROT_EXEC | PROT_READ | PROT_WRITE); // bad but works
+	oCreateMove = (CreateMoveFn)BaseClientDLL_VMT[21];
+	std::cout << "[*] BaseClientDLL CreateMove: " << (void *)oCreateMove << std::endl;
+	BaseClientDLL_VMT[21] = (void *)hkCreateMove;
 }
 
 void CSSMH::Shutdown()

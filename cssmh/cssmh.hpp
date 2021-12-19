@@ -1,7 +1,7 @@
 #ifndef CSSMH_HPP
 #define CSSMH_HPP
 
-#include "hl2sdk/hl2sdk.h"
+#include "hl2sdk/hl2sdk.hpp"
 
 namespace CSSMH {
 	void Init();
@@ -15,6 +15,7 @@ namespace CSSMH {
 		extern ICvar *EngineCvar;
 		extern IBaseClientDLL *BaseClientDLL;
 		extern IClientMode *ClientMode;
+		extern CInput *Input;
 	}
 
 	namespace Hacks {
