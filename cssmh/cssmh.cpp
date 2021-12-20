@@ -1,11 +1,11 @@
 #include "cssmh.hpp"
 #include <iostream>
-#include <regex>
 #include <fstream>
 #include <pthread.h>
-#include <dlfcn.h>
-#include <link.h>
-#include <sys/mman.h>
+#include "utils/memory.hpp"
+#include "utils/module.hpp"
+
+#define CREATEMOVE_INDEX 21
 
 IClientEntityList *CSSMH::Data::EntityList;
 CBasePlayer *CSSMH::Data::LocalPlayer;
@@ -15,44 +15,7 @@ ICvar *CSSMH::Data::EngineCvar;
 IBaseClientDLL *CSSMH::Data::BaseClientDLL;
 IClientMode *CSSMH::Data::ClientMode;
 CInput *CSSMH::Data::Input;
-
-static void *GetModuleBase(const char *modname);
-static void *GetModuleHandle(void *addr);
-static void *GetSymbol(void *handle, const char *symbol);
-
-typedef void (*CreateMoveFn)(IBaseClientDLL *thisptr, int sequence_number, float input_sample_frametime, bool active);
-
-static CreateMoveFn oCreateMove;
-
-void hkCreateMove(IBaseClientDLL *thisptr, int sequence_number, float input_sample_frametime, bool active)
-{
-	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] CreateMove Start\n");
-	oCreateMove(thisptr, sequence_number, input_sample_frametime, active);
-
-	std::wstring mapname = std::wstring(CSSMH::Data::ClientMode->GetMapName());
-	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] Map Name: %s\n", std::string(mapname.begin(), mapname.end()).c_str());
-	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] Input Sample Frametime: %f\n", input_sample_frametime);
-	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] Sequence Number: %d\n", sequence_number);
-
-	CBasePlayer *LocalPlayer = (CBasePlayer *)CSSMH::Data::EntityList->GetClientEntity(CSSMH::Data::EngineClient->GetLocalPlayer());
-	if (!LocalPlayer)
-		return;
-	
-	CUserCmd *cmd = CSSMH::Data::Input->GetUserCmd(sequence_number);
-	if (!cmd)
-		return;
-	
-	if ((cmd->buttons & IN_JUMP) && !(LocalPlayer->GetFlags() & FL_ONGROUND))
-		cmd->buttons &= ~IN_JUMP;
-	
-	// Verify usercmd
-	CInput::CVerifiedUserCmd *verified_cmd = (CInput::CVerifiedUserCmd *)&CSSMH::Data::Input->m_pVerifiedCommands[sequence_number % MULTIPLAYER_BACKUP];
-	verified_cmd->m_cmd = *cmd;
-	verified_cmd->m_crc = cmd->GetChecksum();
-
-	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] CreateMove End\n");
-	return;
-}
+CreateMoveFn CSSMH::Data::fnCreateMove;
 
 void CSSMH::Init()
 {
@@ -116,7 +79,6 @@ void CSSMH::Init()
 	std::cout << "[*] Engine Client: " << (void *)CSSMH::Data::EngineClient << std::endl;
 
 	// materialsystem.so
-
 	void *MatSysBase = GetModuleBase("bin/materialsystem.so");
 	std::cout << "[*] MatSys Base: " << MatSysBase << std::endl;
 
@@ -129,69 +91,22 @@ void CSSMH::Init()
 	CSSMH::Data::EngineCvar = (ICvar *)fnCreateInterface(CVAR_INTERFACE_VERSION, NULL);
 	std::cout << "[*] Engine Cvar: " << (void *)CSSMH::Data::EngineCvar << std::endl;
 
-	// ---
-
-	Color col = Color(255, 0, 0, 255);
-	CSSMH::Data::EngineCvar->ConsoleColorPrintf(col, "[CSSMH] Loaded\n");
-
-	// CreateMove test hook
+	// Hooks
 	void **BaseClientDLL_VMT = *(void ***)CSSMH::Data::BaseClientDLL;
 	std::cout << "[*] BaseClientDLL VMT: " << BaseClientDLL_VMT << std::endl;
-	mprotect((void *)((uintptr_t)BaseClientDLL_VMT & -sysconf(_SC_PAGE_SIZE)), (size_t)sysconf(_SC_PAGE_SIZE), PROT_EXEC | PROT_READ | PROT_WRITE); // bad but works
-	oCreateMove = (CreateMoveFn)BaseClientDLL_VMT[21];
-	std::cout << "[*] BaseClientDLL CreateMove: " << (void *)oCreateMove << std::endl;
-	BaseClientDLL_VMT[21] = (void *)hkCreateMove;
+	ProtectMemory(&BaseClientDLL_VMT[CREATEMOVE_INDEX], sizeof(BaseClientDLL_VMT[CREATEMOVE_INDEX]), PROT_EXEC | PROT_READ | PROT_WRITE);
+	CSSMH::Data::fnCreateMove = (CreateMoveFn)BaseClientDLL_VMT[CREATEMOVE_INDEX];
+	std::cout << "[*] BaseClientDLL CreateMove: " << (void *)CSSMH::Data::fnCreateMove << std::endl;
+	BaseClientDLL_VMT[CREATEMOVE_INDEX] = (void *)CSSMH::Hooks::CreateMove;
+	// TODO: Restore previous protection flags
+
+	// ---
+	Color col = Color(255, 0, 0, 255);
+	CSSMH::Data::EngineCvar->ConsoleColorPrintf(col, "[CSSMH] Loaded\n");
 }
 
 void CSSMH::Shutdown()
 {
+	// TODO: Restore hooks
 	std::system("zenity --info --title=\"[CSSMH]\" --text=\"Ejected\"");
-}
-
-struct dl_iterate_info_t {
-	void *modbase;
-	std::regex regex;
-};
-
-static int DlIterateCallback(dl_phdr_info *info, size_t size, void *data)
-{
-	dl_iterate_info_t *dl_info = (dl_iterate_info_t *)data;
-
-	if (std::regex_match(info->dlpi_name, dl_info->regex)) {
-		dl_info->modbase = (void *)(info->dlpi_addr + info->dlpi_phdr[0].p_vaddr);
-		return 1;
-	}
-
-	return 0;
-}
-
-static void *GetModuleBase(const char *modname)
-{
-	dl_iterate_info_t dl_info = {
-		.modbase = NULL,
-		.regex = std::regex(std::string(".*") + modname) // check if ends with 'modname'
-	};
-
-	dl_iterate_phdr(DlIterateCallback, (void *)&dl_info);
-
-	return dl_info.modbase;
-}
-
-static void *GetModuleHandle(void *addr)
-{
-	void *handle = NULL;
-	Dl_info info;
-
-	if (!dladdr(addr, &info))
-		return handle;
-	
-	handle = dlopen(info.dli_fname, RTLD_NOLOAD | RTLD_NOW);
-	dlclose(handle);
-	
-	return handle;
-}
-
-static void *GetSymbol(void *handle, const char *symbol)
-{
-	return dlsym(handle, symbol);
 }
