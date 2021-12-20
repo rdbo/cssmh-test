@@ -25,7 +25,7 @@ void CSSMH::Hooks::DrawModelExecute(IVModelRender *thisptr, const DrawModelState
 		const char *modelName = CSSMH::Data::ModelInfoClient->GetModelName(pInfo.pModel);
 		if (strstr(modelName, "models/player")) {
 			CBasePlayer *modelEnt = (CBasePlayer *)CSSMH::Data::EntityList->GetClientEntity(pInfo.entity_index);
-			if (modelEnt && modelEnt->IsAlive() && !modelEnt->IsDormant()) {
+			if (modelEnt && !modelEnt->IsDormant() && modelEnt->IsPlayer() && modelEnt->IsAlive() && modelEnt->GetHealth() > 0) {
 				IMaterial *mat = CSSMH::Data::MaterialSystem->FindMaterial("models/gibs/metalgibs/metal_gibs", NULL);
 				
 				// Invisible Mat
