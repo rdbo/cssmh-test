@@ -5,8 +5,6 @@
 #include "utils/memory.hpp"
 #include "utils/module.hpp"
 
-#define CREATEMOVE_INDEX 21
-
 IClientEntityList *CSSMH::Data::EntityList;
 CBasePlayer *CSSMH::Data::LocalPlayer;
 ILauncherMgr *CSSMH::Data::LauncherMgr;
@@ -15,7 +13,7 @@ ICvar *CSSMH::Data::EngineCvar;
 IBaseClientDLL *CSSMH::Data::BaseClientDLL;
 IClientMode *CSSMH::Data::ClientMode;
 CInput *CSSMH::Data::Input;
-CreateMoveFn CSSMH::Data::fnCreateMove;
+VMTMgr *CSSMH::Data::BaseClientDLL_VMT = NULL;
 
 void CSSMH::Init()
 {
@@ -92,13 +90,10 @@ void CSSMH::Init()
 	std::cout << "[*] Engine Cvar: " << (void *)CSSMH::Data::EngineCvar << std::endl;
 
 	// Hooks
-	void **BaseClientDLL_VMT = *(void ***)CSSMH::Data::BaseClientDLL;
-	std::cout << "[*] BaseClientDLL VMT: " << BaseClientDLL_VMT << std::endl;
-	ProtectMemory(&BaseClientDLL_VMT[CREATEMOVE_INDEX], sizeof(BaseClientDLL_VMT[CREATEMOVE_INDEX]), PROT_EXEC | PROT_READ | PROT_WRITE);
-	CSSMH::Data::fnCreateMove = (CreateMoveFn)BaseClientDLL_VMT[CREATEMOVE_INDEX];
-	std::cout << "[*] BaseClientDLL CreateMove: " << (void *)CSSMH::Data::fnCreateMove << std::endl;
-	BaseClientDLL_VMT[CREATEMOVE_INDEX] = (void *)CSSMH::Hooks::CreateMove;
-	// TODO: Restore previous protection flags
+	CSSMH::Data::BaseClientDLL_VMT = new VMTMgr(*(void ***)CSSMH::Data::BaseClientDLL);
+	std::cout << "[*] BaseClientDLL VMT: " << CSSMH::Data::BaseClientDLL_VMT->Address() << std::endl;
+	std::cout << "[*] BaseClientDLL CreateMove: " << CSSMH::Data::BaseClientDLL_VMT->GetFunction(21) << std::endl;
+	CSSMH::Data::BaseClientDLL_VMT->Hook(21, (void *)CSSMH::Hooks::CreateMove);
 
 	// ---
 	Color col = Color(255, 0, 0, 255);
@@ -107,6 +102,8 @@ void CSSMH::Init()
 
 void CSSMH::Shutdown()
 {
-	// TODO: Restore hooks
+	if (CSSMH::Data::BaseClientDLL_VMT)
+		delete CSSMH::Data::BaseClientDLL_VMT;
+	
 	std::system("zenity --info --title=\"[CSSMH]\" --text=\"Ejected\"");
 }

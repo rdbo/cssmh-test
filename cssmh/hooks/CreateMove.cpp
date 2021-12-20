@@ -1,9 +1,12 @@
 #include <cssmh.hpp>
 
+typedef void (*CreateMoveFn)(IBaseClientDLL *thisptr, int sequence_number, float input_sample_frametime, bool active);
+
 void CSSMH::Hooks::CreateMove(IBaseClientDLL *thisptr, int sequence_number, float input_sample_frametime, bool active)
 {
+	static CreateMoveFn fnCreateMove = (CreateMoveFn)CSSMH::Data::BaseClientDLL_VMT->GetOriginal(21);
 	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] CreateMove Start\n");
-	CSSMH::Data::fnCreateMove(thisptr, sequence_number, input_sample_frametime, active);
+	fnCreateMove(thisptr, sequence_number, input_sample_frametime, active);
 
 	std::wstring mapname = std::wstring(CSSMH::Data::ClientMode->GetMapName());
 	CSSMH::Data::EngineCvar->ConsolePrintf("[CSSMH] Map Name: %s\n", std::string(mapname.begin(), mapname.end()).c_str());

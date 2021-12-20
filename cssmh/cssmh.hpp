@@ -2,8 +2,7 @@
 #define CSSMH_HPP
 
 #include "hl2sdk/hl2sdk.hpp"
-
-typedef void (*CreateMoveFn)(IBaseClientDLL *thisptr, int sequence_number, float input_sample_frametime, bool active);
+#include "utils/vmtmgr.hpp"
 
 namespace CSSMH {
 	void Init();
@@ -18,7 +17,8 @@ namespace CSSMH {
 		extern IBaseClientDLL *BaseClientDLL;
 		extern IClientMode *ClientMode;
 		extern CInput *Input;
-		extern CreateMoveFn fnCreateMove;
+
+		extern VMTMgr *BaseClientDLL_VMT;
 	}
 
 	namespace Hacks {
