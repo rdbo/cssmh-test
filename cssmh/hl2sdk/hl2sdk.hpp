@@ -60,5 +60,9 @@
 #include "game/client/iclientmode.h"
 #include "game/client/clientmode_shared.h"
 #include "game/shared/in_buttons.h"
+#include "public/engine/ivmodelinfo.h"
+#include "public/engine/ivmodelrender.h"
+#include "public/materialsystem/imaterialsystem.h"
+#include "public/materialsystem/imaterial.h"
 
 #endif

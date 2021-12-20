@@ -17,8 +17,12 @@ namespace CSSMH {
 		extern IBaseClientDLL *BaseClientDLL;
 		extern IClientMode *ClientMode;
 		extern CInput *Input;
+		extern IVModelInfoClient *ModelInfoClient;
+		extern IVModelRender *ModelRender;
+		extern IMaterialSystem *MaterialSystem;
 
 		extern VMTMgr *BaseClientDLL_VMT;
+		extern VMTMgr *ModelRender_VMT;
 	}
 
 	namespace Hacks {
@@ -27,6 +31,7 @@ namespace CSSMH {
 
 	namespace Hooks {
 		void CreateMove(IBaseClientDLL *thisptr, int sequence_number, float input_sample_frametime, bool active);
+		void DrawModelExecute(IVModelRender *thisptr, const DrawModelState_t &state, const ModelRenderInfo_t &pInfo, matrix3x4_t *pCustomBoneToWorld);
 	}
 }
 

@@ -14,6 +14,10 @@ IBaseClientDLL *CSSMH::Data::BaseClientDLL;
 IClientMode *CSSMH::Data::ClientMode;
 CInput *CSSMH::Data::Input;
 VMTMgr *CSSMH::Data::BaseClientDLL_VMT = NULL;
+IVModelInfoClient *CSSMH::Data::ModelInfoClient;
+IVModelRender *CSSMH::Data::ModelRender;
+IMaterialSystem *CSSMH::Data::MaterialSystem;
+VMTMgr *CSSMH::Data::ModelRender_VMT = NULL;
 
 void CSSMH::Init()
 {
@@ -32,10 +36,10 @@ void CSSMH::Init()
 	std::cout << "[*] Client CreateInterface: " << (void *)fnCreateInterface << std::endl;
 
 	CSSMH::Data::EntityList = (IClientEntityList *)fnCreateInterface(VCLIENTENTITYLIST_INTERFACE_VERSION, NULL);
-	std::cout << "[*] Entity List: " << (void *)CSSMH::Data::EntityList << std::endl;
+	std::cout << "[*] EntityList: " << (void *)CSSMH::Data::EntityList << std::endl;
 
 	CSSMH::Data::BaseClientDLL = (IBaseClientDLL *)fnCreateInterface(CLIENT_DLL_INTERFACE_VERSION, NULL);
-	std::cout << "[*] Base Client DLL: " << (void *)CSSMH::Data::BaseClientDLL << std::endl;
+	std::cout << "[*] BaseClientDLL: " << (void *)CSSMH::Data::BaseClientDLL << std::endl;
 	std::cout << "[*] Screen Width: " << CSSMH::Data::BaseClientDLL->GetScreenWidth() << std::endl;
 	std::cout << "[*] Screen Height: " << CSSMH::Data::BaseClientDLL->GetScreenHeight() << std::endl;
 
@@ -49,7 +53,7 @@ void CSSMH::Init()
 	CSSMH::Data::ClientMode = **(IClientMode ***)(
 		&((char *)((*(void ***)CSSMH::Data::BaseClientDLL)[10]))[1]
 	);
-	std::cout << "[*] Client Mode: " << (void *)CSSMH::Data::ClientMode << std::endl;
+	std::cout << "[*] ClientMode: " << (void *)CSSMH::Data::ClientMode << std::endl;
 
 	/* Get 'input' from CHLClient::IN_ActivateMouse
 	 * IN_ActivateMouse:
@@ -62,6 +66,8 @@ void CSSMH::Init()
 		&((char *)((*(void ***)CSSMH::Data::BaseClientDLL)[14]))[1]
 	);
 	std::cout << "[*] Input: " << (void *)CSSMH::Data::Input << std::endl;
+
+	std::cout << "====================" << std::endl;
 
 	// engine.so
 	void *EngineBase = GetModuleBase("bin/engine.so");
@@ -76,6 +82,14 @@ void CSSMH::Init()
 	CSSMH::Data::EngineClient = (IVEngineClient *)fnCreateInterface(VENGINE_CLIENT_INTERFACE_VERSION, NULL);
 	std::cout << "[*] Engine Client: " << (void *)CSSMH::Data::EngineClient << std::endl;
 
+	CSSMH::Data::ModelInfoClient = (IVModelInfoClient *)fnCreateInterface(VMODELINFO_CLIENT_INTERFACE_VERSION, NULL);
+	std::cout << "[*] ModelInfoClient: " << (void *)CSSMH::Data::ModelInfoClient << std::endl;
+
+	CSSMH::Data::ModelRender = (IVModelRender *)fnCreateInterface(VENGINE_HUDMODEL_INTERFACE_VERSION, NULL);
+	std::cout << "[*] ModelRender: " << (void *)CSSMH::Data::ModelRender << std::endl;
+
+	std::cout << "====================" << std::endl;
+
 	// materialsystem.so
 	void *MatSysBase = GetModuleBase("bin/materialsystem.so");
 	std::cout << "[*] MatSys Base: " << MatSysBase << std::endl;
@@ -87,13 +101,23 @@ void CSSMH::Init()
 	std::cout << "[*] MatSys CreateInterface: " << (void *)fnCreateInterface << std::endl;
 
 	CSSMH::Data::EngineCvar = (ICvar *)fnCreateInterface(CVAR_INTERFACE_VERSION, NULL);
-	std::cout << "[*] Engine Cvar: " << (void *)CSSMH::Data::EngineCvar << std::endl;
+	std::cout << "[*] EngineCvar: " << (void *)CSSMH::Data::EngineCvar << std::endl;
+
+	CSSMH::Data::MaterialSystem = (IMaterialSystem *)fnCreateInterface(MATERIAL_SYSTEM_INTERFACE_VERSION, NULL);
+	std::cout << "[*] MaterialSystem: " << (void *)CSSMH::Data::MaterialSystem << std::endl;
+
+	std::cout << "====================" << std::endl;
 
 	// Hooks
 	CSSMH::Data::BaseClientDLL_VMT = new VMTMgr(*(void ***)CSSMH::Data::BaseClientDLL);
 	std::cout << "[*] BaseClientDLL VMT: " << CSSMH::Data::BaseClientDLL_VMT->Address() << std::endl;
 	std::cout << "[*] BaseClientDLL CreateMove: " << CSSMH::Data::BaseClientDLL_VMT->GetFunction(21) << std::endl;
 	CSSMH::Data::BaseClientDLL_VMT->Hook(21, (void *)CSSMH::Hooks::CreateMove);
+
+	CSSMH::Data::ModelRender_VMT = new VMTMgr(*(void ***)CSSMH::Data::ModelRender);
+	std::cout << "[*] ModelRender VMT: " << CSSMH::Data::ModelRender_VMT->Address() << std::endl;
+	std::cout << "[*] ModelRender DrawModelExecute: " << CSSMH::Data::ModelRender_VMT->GetFunction(19) << std::endl;
+	CSSMH::Data::ModelRender_VMT->Hook(19, (void *)CSSMH::Hooks::DrawModelExecute);
 
 	// ---
 	Color col = Color(255, 0, 0, 255);
@@ -102,8 +126,12 @@ void CSSMH::Init()
 
 void CSSMH::Shutdown()
 {
+	/*
+	// TODO: Fix this crash
 	if (CSSMH::Data::BaseClientDLL_VMT)
 		delete CSSMH::Data::BaseClientDLL_VMT;
-	
+	if (CSSMH::Data::ModelRender_VMT)
+		delete CSSMH::Data::ModelRender_VMT;
+	*/
 	std::system("zenity --info --title=\"[CSSMH]\" --text=\"Ejected\"");
 }
