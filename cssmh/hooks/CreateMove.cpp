@@ -22,6 +22,7 @@ void CSSMH::Hooks::CreateMove(IBaseClientDLL *thisptr, int sequence_number, floa
 		return;
 	
 	// Run hacks
+	CSSMH::Hacks::AutoStrafe(cmd);
 	CSSMH::Hacks::Bunnyhop(cmd);
 	
 	// Verify cmd

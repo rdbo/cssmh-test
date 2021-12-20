@@ -27,6 +27,7 @@ namespace CSSMH {
 
 	namespace Hacks {
 		void Bunnyhop(CUserCmd *cmd);
+		void AutoStrafe(CUserCmd *cmd);
 	}
 
 	namespace Hooks {
