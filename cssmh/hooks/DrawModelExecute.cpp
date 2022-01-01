@@ -68,10 +68,12 @@ void CSSMH::Hooks::DrawModelExecute(IVModelRender *thisptr, const DrawModelState
 		} else if (strstr(modelName, "models/weapons")) {
 			IMaterial *mat = CSSMH::Data::MaterialSystem->FindMaterial("models/gibs/glass/glass", NULL);
 			mat->SetMaterialVarFlag(MATERIAL_VAR_IGNOREZ, false);
-			mat->SetMaterialVarFlag(MATERIAL_VAR_FLAT, true);
+			//mat->SetMaterialVarFlag(MATERIAL_VAR_FLAT, true);
 			//mat->SetMaterialVarFlag(MaterialVarFlags_t::MATERIAL_VAR_WIREFRAME, true);
-			mat->ColorModulate(1.0f, 1.0f, 1.0f);
-			mat->AlphaModulate(1.0f);
+			//mat->ColorModulate(1.0f, 1.0f, 1.0f);
+			//mat->AlphaModulate(1.0f);
+			//float col[] = { 1.0f, 1.0f, 0.0f, 1.0f };
+			//CSSMH::Data::RenderView->SetColorModulation(col);
 			CSSMH::Data::ModelRender->ForcedMaterialOverride(mat);
 			fnDrawModelExecute(thisptr, state, pInfo, pCustomBoneToWorld);
 			CSSMH::Data::ModelRender->ForcedMaterialOverride(nullptr);
