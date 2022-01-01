@@ -64,5 +64,7 @@
 #include "public/engine/ivmodelrender.h"
 #include "public/materialsystem/imaterialsystem.h"
 #include "public/materialsystem/imaterial.h"
+#include "public/materialsystem/imaterialvar.h"
+#include "public/ivrenderview.h"
 
 #endif

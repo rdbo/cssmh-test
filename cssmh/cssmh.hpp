@@ -20,6 +20,7 @@ namespace CSSMH {
 		extern IVModelInfoClient *ModelInfoClient;
 		extern IVModelRender *ModelRender;
 		extern IMaterialSystem *MaterialSystem;
+		extern IVRenderView *RenderView;
 
 		extern VMTMgr *BaseClientDLL_VMT;
 		extern VMTMgr *ModelRender_VMT;

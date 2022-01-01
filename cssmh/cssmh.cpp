@@ -5,18 +5,20 @@
 #include "utils/memory.hpp"
 #include "utils/module.hpp"
 
+ILauncherMgr *CSSMH::Data::LauncherMgr;
 IClientEntityList *CSSMH::Data::EntityList;
 CBasePlayer *CSSMH::Data::LocalPlayer;
-ILauncherMgr *CSSMH::Data::LauncherMgr;
 IVEngineClient *CSSMH::Data::EngineClient;
 ICvar *CSSMH::Data::EngineCvar;
 IBaseClientDLL *CSSMH::Data::BaseClientDLL;
 IClientMode *CSSMH::Data::ClientMode;
 CInput *CSSMH::Data::Input;
-VMTMgr *CSSMH::Data::BaseClientDLL_VMT = NULL;
 IVModelInfoClient *CSSMH::Data::ModelInfoClient;
 IVModelRender *CSSMH::Data::ModelRender;
 IMaterialSystem *CSSMH::Data::MaterialSystem;
+IVRenderView *CSSMH::Data::RenderView;
+
+VMTMgr *CSSMH::Data::BaseClientDLL_VMT = NULL;
 VMTMgr *CSSMH::Data::ModelRender_VMT = NULL;
 
 void CSSMH::Init()
@@ -88,6 +90,9 @@ void CSSMH::Init()
 	CSSMH::Data::ModelRender = (IVModelRender *)fnCreateInterface(VENGINE_HUDMODEL_INTERFACE_VERSION, NULL);
 	std::cout << "[*] ModelRender: " << (void *)CSSMH::Data::ModelRender << std::endl;
 
+	CSSMH::Data::RenderView = (IVRenderView *)fnCreateInterface(VENGINE_RENDERVIEW_INTERFACE_VERSION, NULL);
+	std::cout << "[*] RenderView: " << (void *)CSSMH::Data::RenderView << std::endl;
+
 	std::cout << "====================" << std::endl;
 
 	// materialsystem.so
@@ -108,6 +113,16 @@ void CSSMH::Init()
 
 	std::cout << "====================" << std::endl;
 
+	// Dump materials
+	MaterialHandle_t hmat;
+	std::cout << "[*] Material List Dump" << std::endl;
+	hmat = CSSMH::Data::MaterialSystem->FirstMaterial();
+	do {
+		IMaterial *mat = CSSMH::Data::MaterialSystem->GetMaterial(hmat);
+		std::cout << "[*] Material: " << mat->GetName() << std::endl;
+	} while ((hmat = CSSMH::Data::MaterialSystem->NextMaterial(hmat)) != CSSMH::Data::MaterialSystem->InvalidMaterial());
+	std::cout << "====================" << std::endl;
+
 	// Hooks
 	CSSMH::Data::BaseClientDLL_VMT = new VMTMgr(*(void ***)CSSMH::Data::BaseClientDLL);
 	std::cout << "[*] BaseClientDLL VMT: " << CSSMH::Data::BaseClientDLL_VMT->Address() << std::endl;
@@ -118,6 +133,7 @@ void CSSMH::Init()
 	std::cout << "[*] ModelRender VMT: " << CSSMH::Data::ModelRender_VMT->Address() << std::endl;
 	std::cout << "[*] ModelRender DrawModelExecute: " << CSSMH::Data::ModelRender_VMT->GetFunction(19) << std::endl;
 	CSSMH::Data::ModelRender_VMT->Hook(19, (void *)CSSMH::Hooks::DrawModelExecute);
+	std::cout << "====================" << std::endl;
 
 	// ---
 	Color col = Color(255, 0, 0, 255);
